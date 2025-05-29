@@ -3,7 +3,7 @@ import React from 'react';
 import { SafeAreaView, StyleSheet } from 'react-native';
 import VoiceRecorder from '../../components/VoiceRecorder';
 
-export default function HomeScreen() {
+export default function RecordingScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="auto" />
