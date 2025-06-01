@@ -23,28 +23,28 @@ const HomeScreen: React.FC = () => {
     router.push('/chats');
   };
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Déconnexion',
-      'Êtes-vous sûr de vouloir vous déconnecter ?',
-      [
-        {
-          text: 'Annuler',
-          style: 'cancel',
-        },
-        {
-          text: 'Déconnexion',
-          style: 'destructive',
-          onPress: () => {
-            // Add your logout logic here
-            // Clear AsyncStorage, reset auth state, etc.
-            console.log('User logged out');
-            router.replace('/login'); // Navigate to login screen
-          },
-        },
-      ]
-    );
-  };
+  // const handleLogout = () => {
+  //   Alert.alert(
+  //     'Déconnexion',
+  //     'Êtes-vous sûr de vouloir vous déconnecter ?',
+  //     [
+  //       {
+  //         text: 'Annuler',
+  //         style: 'cancel',
+  //       },
+  //       {
+  //         text: 'Déconnexion',
+  //         style: 'destructive',
+  //         onPress: () => {
+  //           // Add your logout logic here
+  //           // Clear AsyncStorage, reset auth state, etc.
+  //           console.log('User logged out');
+  //           router.replace('/login'); // Navigate to login screen
+  //         },
+  //       },
+  //     ]
+  //   );
+  // };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -81,14 +81,14 @@ const HomeScreen: React.FC = () => {
             <Text style={styles.navButtonText}>Historique</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity 
+          {/* <TouchableOpacity 
             style={[styles.navButton, styles.logoutButton]}
             onPress={handleLogout}
             activeOpacity={0.7}
           >
             <Text style={styles.navButtonIcon}>🚪</Text>
             <Text style={styles.navButtonText}>Déconnexion</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
 
         {/* Recording Section - Main Feature */}
