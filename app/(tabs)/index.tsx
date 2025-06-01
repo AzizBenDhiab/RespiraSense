@@ -1,3 +1,11 @@
+import { Image } from "expo-image";
+import { Platform, StyleSheet } from "react-native";
+
+import { HelloWave } from "@/components/HelloWave";
+import ParallaxScrollView from "@/components/ParallaxScrollView";
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
+
 import VoiceRecorder from '@/components/VoiceRecorder';
 import { useRouter } from 'expo-router';
 import React from 'react';
@@ -347,6 +355,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     marginBottom: 8,
   },
+
   quickActionText: {
     fontSize: 12,
     color: '#2c3e50',
