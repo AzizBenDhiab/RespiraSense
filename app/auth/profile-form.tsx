@@ -103,11 +103,7 @@ const ProfileFormScreen: React.FC = () => {
           age: ageNum,
           conditions: selectedConditions,
         });
-        if (success) {
-          Alert.alert("Success", "Account created successfully!", [
-            { text: "Continue", onPress: () => router.push("/(tabs)") },
-          ]);
-        } else {
+        if (!success) {
           Alert.alert("Error", "Failed to create account");
         }
       } else if (isAuthenticated) {
@@ -121,9 +117,6 @@ const ProfileFormScreen: React.FC = () => {
           { withCredentials: true }
         );
         if (response.status === 200) {
-          Alert.alert("Success", "Profile updated successfully!", [
-            { text: "Continue", onPress: () => router.push("/(tabs)") },
-          ]);
         } else {
           Alert.alert("Error", "Failed to update profile");
         }

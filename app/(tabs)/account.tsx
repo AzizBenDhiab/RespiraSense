@@ -121,7 +121,6 @@ const AccountScreen: React.FC = () => {
       );
       console.log("Profile update response:", response.status, response.data);
       if (response.status === 200) {
-        Alert.alert("Success", "Profile updated successfully!");
       } else {
         Alert.alert("Error", "Failed to update profile");
       }
@@ -145,9 +144,7 @@ const AccountScreen: React.FC = () => {
       console.log(`Sending logout request to: ${API_URL}/logout`);
       await axios.post(`${API_URL}/logout`, {}, { withCredentials: true });
       signOut();
-      Alert.alert("Success", "Logged out successfully", [
-        { text: "OK", onPress: () => router.push("/auth/login") },
-      ]);
+
     } catch (error: any) {
       console.error("Logout error:", error.message);
       Alert.alert("Error", "Failed to log out. Please try again.");
