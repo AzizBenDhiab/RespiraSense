@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
   messageBubble: {
     maxWidth: "80%",
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 2,
     borderRadius: 20,
   },
   botBubble: {

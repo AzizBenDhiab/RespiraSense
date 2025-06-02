@@ -554,7 +554,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
 
       const offlineMessage: Message = {
         id: generateUniqueMessageId(), // ✅ Use unique ID generator
-        text: `🔄 Message sera envoyé quand la connexion sera rétablie...\n\n📍 Serveur: ${wsUrl}\n🔍 Vérifiez que le serveur fonctionne`,
+        text: `🔄 Votre message sera envoyé quand la connexion sera rétablie...`,
         isBot: true,
         timestamp: new Date(),
       };
