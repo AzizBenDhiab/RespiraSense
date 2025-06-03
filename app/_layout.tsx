@@ -18,7 +18,7 @@ import {
 import { ActivityIndicator, View } from "react-native";
 import "react-native-reanimated";
 
-const API_URL = "http://192.168.218.101:5001";
+const API_URL = "http://172.20.10.9:5001";
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;

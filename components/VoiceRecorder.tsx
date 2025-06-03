@@ -49,9 +49,10 @@ const VoiceRecorder: React.FC = () => {
   // Animation pour le bouton d'enregistrement
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  // Configuration de l'API Flask - UPDATED
+  // Configuration de l'API Flask
   const API_CONFIG = {
-    baseUrl: "http://192.168.218.101:5000", // Remplacez par l'IP de votre serveur Flask
+    baseUrl: "http://172.20.10.9:5002", // Remplacez par l'IP de votre serveur Flask
+    authBaseUrl: "http://172.20.10.9:5001",
     endpoint: "/classify",
     healthEndpoint: "/health",
     timeout: 60000, // 60 secondes pour le traitement audio
@@ -497,145 +498,136 @@ const VoiceRecorder: React.FC = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>🩺 Classificateur Audio Médical</Text>
-      <Text style={styles.subtitle}>
-        Enregistrer • Classifier • Diagnostiquer
-      </Text>
+      {/* Header Section */}
+      <View style={styles.headerContainer}>
+        <Text style={styles.appName}>RespiraSense</Text>
+        <Text style={styles.subtitle}>Analyse audio respiratoire</Text>
+      </View>
 
-      {/* Affichage du temps */}
+      {/* Time Display */}
       <View style={styles.timeContainer}>
         <Text style={styles.timeText}>
           {isRecording
-            ? `🔴 Enregistrement: ${formatTime(recordingDuration)}`
+            ? `🔴 ${formatTime(recordingDuration)}`
             : playbackStatus?.isLoaded && "positionMillis" in playbackStatus
-            ? `🔊 Lecture: ${formatTime(playbackStatus.positionMillis || 0)}`
+            ? `🔊 ${formatTime(playbackStatus.positionMillis || 0)}`
             : "⏸️ 00:00"}
         </Text>
       </View>
 
-      {/* FIXED: Résultat de classification */}
+      {/* Classification Result */}
       {classificationResult && (
         <View style={styles.resultContainer}>
-          <Text style={styles.resultTitle}>🩺 Diagnostic IA</Text>
+          <Text style={styles.resultTitle}>🩺 Diagnostic</Text>
           <Text style={styles.resultDisease}>
-            Maladie: {classificationResult.predicted_disease}
+            {classificationResult.predicted_disease}
           </Text>
           <Text style={styles.resultConfidence}>
-            Confiance: {classificationResult.confidence_percent} (
-            {classificationResult.confidence_level})
+            {classificationResult.confidence_percent} • {classificationResult.confidence_level}
           </Text>
           <Text style={styles.resultReliability}>
-            {classificationResult.is_reliable
-              ? "✅ Résultat fiable"
-              : "⚠️ Résultat peu fiable"}
+            {classificationResult.is_reliable ? "✅ Fiable" : "⚠️ Peu fiable"}
           </Text>
           <TouchableOpacity
             style={styles.detailsButton}
-            onPress={() =>
-              classificationResult && showDetailedResult(classificationResult)
-            }
+            onPress={() => classificationResult && showDetailedResult(classificationResult)}
           >
-            <Text style={styles.detailsButtonText}>📊 Voir détails</Text>
+            <Text style={styles.detailsButtonText}>Détails</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      {/* Indicateur d'upload */}
+      {/* Upload Indicator */}
       {isUploading && (
         <View style={styles.uploadContainer}>
-          <ActivityIndicator size="large" color="#3498db" />
-          <Text style={styles.uploadText}>🤖 Classification en cours...</Text>
-          <Text style={styles.uploadSubText}>
-            Analyse du spectrogramme mel...
-          </Text>
+          <ActivityIndicator size="large" color="#4A90E2" />
+          <Text style={styles.uploadText}>Analyse en cours...</Text>
         </View>
       )}
 
-      {/* Boutons de contrôle */}
+      {/* Main Controls - All buttons in one line */}
       <View style={styles.controlsContainer}>
-        {/* Bouton d'enregistrement */}
-        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+        <View style={styles.mainControlsRow}>
+          {/* Record Button */}
+          <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                isRecording ? styles.recordingActive : styles.recordingInactive,
+              ]}
+              onPress={isRecording ? stopRecording : startRecording}
+              disabled={isPlaying || isUploading}
+            >
+              <Text style={styles.actionButtonIcon}>
+                {isRecording ? "⏹️" : "🎤"}
+              </Text>
+              <Text style={styles.actionButtonText}>
+                {isRecording ? "Arrêter" : "Enregistrer"}
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
+
+          {/* Play Button */}
           <TouchableOpacity
             style={[
-              styles.recordButton,
-              isRecording ? styles.recordingActive : styles.recordingInactive,
+              styles.actionButton,
+              styles.playButton,
+              !audioUri || isRecording || isUploading ? styles.disabled : {},
             ]}
-            onPress={isRecording ? stopRecording : startRecording}
-            disabled={isPlaying || isUploading}
+            onPress={isPlaying ? stopPlaying : playRecording}
+            disabled={!audioUri || isRecording || isUploading}
           >
-            <Text style={styles.recordButtonText}>
-              {isRecording ? "⏹️ Arrêter" : "🎤 Enregistrer"}
+            <Text style={styles.actionButtonIcon}>
+              {isPlaying ? "⏸️" : "▶️"}
+            </Text>
+            <Text style={styles.actionButtonText}>
+              {isPlaying ? "Pause" : "Écouter"}
             </Text>
           </TouchableOpacity>
-        </Animated.View>
 
-        {/* Bouton de lecture */}
-        <TouchableOpacity
-          style={[
-            styles.playButton,
-            !audioUri || isRecording || isUploading ? styles.disabled : {},
-          ]}
-          onPress={isPlaying ? stopPlaying : playRecording}
-          disabled={!audioUri || isRecording || isUploading}
-        >
-          <Text style={styles.playButtonText}>
-            {isPlaying ? "⏸️ Pause" : "▶️ Écouter"}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Bouton de classification */}
-        <TouchableOpacity
-          style={[
-            styles.classifyButton,
-            !audioUri || isRecording || isUploading ? styles.disabled : {},
-          ]}
-          onPress={handleClassifyAudio}
-          disabled={!audioUri || isRecording || isUploading}
-        >
-          <Text style={styles.classifyButtonText}>🤖 Diagnostiquer</Text>
-        </TouchableOpacity>
+          {/* Diagnose Button */}
+          <TouchableOpacity
+            style={[
+              styles.actionButton,
+              styles.diagnoseButton,
+              !audioUri || isRecording || isUploading ? styles.disabled : {},
+            ]}
+            onPress={handleClassifyAudio}
+            disabled={!audioUri || isRecording || isUploading}
+          >
+            <Text style={styles.actionButtonIcon}>🤖</Text>
+            <Text style={styles.actionButtonText}>Diagnostiquer</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Instructions */}
-      <View style={styles.instructionsContainer}>
-        <Text style={styles.instructionsTitle}>📋 Instructions</Text>
-        <Text style={styles.instructionsText}>
-          • Appuyez sur "Enregistrer" pour capturer l'audio médical{"\n"}•
-          Parlez clairement près du microphone{"\n"}• Appuyez sur "Arrêter" pour
-          terminer l'enregistrement{"\n"}• Utilisez "Écouter" pour vérifier
-          l'audio{"\n"}• Cliquez "Diagnostiquer" pour l'analyse IA
-        </Text>
-      </View>
-
-      {/* Configuration API */}
-      <View style={styles.apiInfoContainer}>
-        <Text style={styles.apiInfoTitle}>🔧 Configuration API</Text>
-        <Text style={styles.apiInfoText}>
-          Serveur Flask: {API_CONFIG.baseUrl}
-          {"\n"}
-          Endpoint: {API_CONFIG.endpoint}
-          {"\n"}
-          Health: {API_CONFIG.healthEndpoint}
-          {"\n"}
-          Timeout: {API_CONFIG.timeout / 1000}s
-        </Text>
-      </View>
-
-      {/* Statut */}
+      {/* Status */}
       <View style={styles.statusContainer}>
         <Text style={styles.statusText}>
           {isUploading
-            ? "🤖 Classification IA en cours..."
+            ? "🤖 Analyse IA en cours..."
             : isRecording
-            ? "🔴 Enregistrement en cours..."
+            ? "🔴 Enregistrement..."
             : isPlaying
-            ? "🔊 Lecture en cours..."
+            ? "🔊 Lecture..."
             : audioUri
             ? classificationResult
-              ? "✅ Audio diagnostiqué"
-              : "📁 Prêt à diagnostiquer"
+              ? "✅ Audio analysé"
+              : "📁 Prêt à analyser"
             : "⏳ Prêt à enregistrer"}
         </Text>
+      </View>
+
+      {/* Conseils d'utilisation */}
+      <View style={styles.tipsContainer}>
+        <Text style={styles.tipsTitle}>💡 Conseils d'utilisation</Text>
+        <View style={styles.tipsList}>
+          <Text style={styles.tipItem}>• Trouvez un endroit calme pour l'enregistrement</Text>
+          <Text style={styles.tipItem}>• Respirez normalement pendant 10-15 secondes</Text>
+          <Text style={styles.tipItem}>• Tenez l'appareil près de votre bouche</Text>
+          <Text style={styles.tipItem}>• Écoutez votre enregistrement avant le diagnostic</Text>
+          <Text style={styles.tipItem}>• Les résultats sont indicatifs, consultez un médecin</Text>
+        </View>
       </View>
     </ScrollView>
   );
@@ -644,256 +636,201 @@ const VoiceRecorder: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#f8f9fa",
-    padding: 20,
-    paddingTop: 60,
+    backgroundColor: "#F8FAFB",
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 30,
   },
-  title: {
-    fontSize: 28,
+  headerContainer: {
+    alignItems: "center",
+    marginBottom: 30,
+  },
+  appName: {
+    fontSize: 36,
     fontWeight: "bold",
-    color: "#2c3e50",
+    color: "#1E293B",
     marginBottom: 5,
-    textAlign: "center",
+    letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 16,
-    color: "#7f8c8d",
-    marginBottom: 30,
-    textAlign: "center",
+    color: "#64748B",
+    fontWeight: "400",
   },
   timeContainer: {
-    backgroundColor: "#ffffff",
-    paddingVertical: 15,
-    paddingHorizontal: 25,
-    borderRadius: 15,
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 16,
     marginBottom: 20,
-    minWidth: 250,
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
   },
   timeText: {
-    fontSize: 18,
-    color: "#2c3e50",
+    fontSize: 20,
+    color: "#1E293B",
     fontWeight: "600",
     fontFamily: "monospace",
   },
   resultContainer: {
-    backgroundColor: "#e8f5e8",
+    backgroundColor: "#F0FDF4",
     padding: 20,
-    borderRadius: 15,
+    borderRadius: 16,
     marginBottom: 20,
-    minWidth: 280,
     alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#27ae60",
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
   },
   resultTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#27ae60",
-    marginBottom: 10,
-  },
-  resultClass: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#2c3e50",
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  resultConfidence: {
     fontSize: 16,
-    color: "#7f8c8d",
-    marginBottom: 15,
-  },
-  detailsButton: {
-    backgroundColor: "#3498db",
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-  },
-  detailsButtonText: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "bold",
-  },
-  uploadContainer: {
-    backgroundColor: "#ffffff",
-    padding: 20,
-    borderRadius: 15,
-    alignItems: "center",
-    marginBottom: 20,
-    minWidth: 250,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  uploadText: {
-    fontSize: 16,
-    color: "#2c3e50",
-    marginTop: 10,
     fontWeight: "600",
-  },
-  uploadSubText: {
-    fontSize: 14,
-    color: "#7f8c8d",
-    marginTop: 5,
-  },
-  controlsContainer: {
-    flexDirection: "row",
-    gap: 15,
-    marginBottom: 30,
-    flexWrap: "wrap",
-    justifyContent: "center",
-  },
-  recordButton: {
-    paddingVertical: 18,
-    paddingHorizontal: 30,
-    borderRadius: 30,
-    minWidth: 130,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 8,
-  },
-  recordingActive: {
-    backgroundColor: "#e74c3c",
-  },
-  recordingInactive: {
-    backgroundColor: "#27ae60",
-  },
-  recordButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  playButton: {
-    backgroundColor: "#3498db",
-    paddingVertical: 18,
-    paddingHorizontal: 30,
-    borderRadius: 30,
-    minWidth: 130,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 8,
+    color: "#15803D",
+    marginBottom: 8,
   },
   resultDisease: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#2c3e50",
-    marginBottom: 8,
+    color: "#1E293B",
+    marginBottom: 6,
     textAlign: "center",
+  },
+  resultConfidence: {
+    fontSize: 14,
+    color: "#64748B",
+    marginBottom: 8,
   },
   resultReliability: {
     fontSize: 14,
-    color: "#7f8c8d",
-    marginBottom: 15,
-    textAlign: "center",
+    color: "#64748B",
+    marginBottom: 12,
     fontWeight: "500",
   },
-  playButtonText: {
+  detailsButton: {
+    backgroundColor: "#4A90E2",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+  },
+  detailsButtonText: {
     color: "white",
-    fontSize: 16,
-    fontWeight: "bold",
+    fontSize: 14,
+    fontWeight: "600",
   },
-  classifyButton: {
-    backgroundColor: "#9b59b6",
-    paddingVertical: 18,
-    paddingHorizontal: 30,
-    borderRadius: 30,
-    minWidth: 130,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 8,
-  },
-  classifyButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  disabled: {
-    backgroundColor: "#bdc3c7",
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  instructionsContainer: {
-    backgroundColor: "#ffffff",
+  uploadContainer: {
+    backgroundColor: "#FFFFFF",
     padding: 20,
-    borderRadius: 15,
-    borderLeftWidth: 4,
-    borderLeftColor: "#3498db",
-    maxWidth: 320,
+    borderRadius: 16,
+    alignItems: "center",
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  uploadText: {
+    fontSize: 16,
+    color: "#1E293B",
+    marginTop: 12,
+    fontWeight: "500",
+  },
+  controlsContainer: {
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  mainControlsRow: {
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "center",
+    flexWrap: "wrap",
+  },
+  actionButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    minWidth: 90,
+    flex: 1,
+    maxWidth: 110,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  instructionsTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#2c3e50",
-    marginBottom: 12,
+  recordingActive: {
+    backgroundColor: "#EF4444",
   },
-  instructionsText: {
-    fontSize: 14,
-    color: "#7f8c8d",
-    lineHeight: 22,
+  recordingInactive: {
+    backgroundColor: "#10B981",
   },
-  apiInfoContainer: {
-    backgroundColor: "#fff3cd",
-    padding: 15,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#ffeaa7",
-    maxWidth: 320,
-    marginBottom: 20,
+  playButton: {
+    backgroundColor: "#4A90E2",
   },
-  apiInfoTitle: {
+  diagnoseButton: {
+    backgroundColor: "#8B5CF6",
+  },
+  actionButtonIcon: {
     fontSize: 16,
-    fontWeight: "bold",
-    color: "#856404",
-    marginBottom: 8,
+    marginBottom: 2,
   },
-  apiInfoText: {
+  actionButtonText: {
+    color: "white",
     fontSize: 12,
-    color: "#856404",
-    lineHeight: 16,
-    fontFamily: "monospace",
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  disabled: {
+    backgroundColor: "#CBD5E1",
+    shadowOpacity: 0,
+    elevation: 0,
   },
   statusContainer: {
-    backgroundColor: "#ecf0f1",
+    backgroundColor: "#F1F5F9",
     paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 20,
-    marginBottom: 15,
+    borderRadius: 12,
+    marginBottom: 16,
+    alignItems: "center",
   },
   statusText: {
     fontSize: 14,
-    color: "#34495e",
+    color: "#475569",
     fontWeight: "500",
-    textAlign: "center",
+  },
+  tipsContainer: {
+    backgroundColor: "#EFF6FF",
+    padding: 16,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: "#4A90E2",
+  },
+  tipsTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1E293B",
+    marginBottom: 12,
+  },
+  tipsList: {
+    gap: 6,
+  },
+  tipItem: {
+    fontSize: 14,
+    color: "#475569",
+    lineHeight: 18,
   },
 });
 
