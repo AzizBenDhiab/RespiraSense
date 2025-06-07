@@ -11,7 +11,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-
+// Add these imports at the top of VoiceRecorder.tsx
+import { useNavigation } from "@react-navigation/native";
+import { useChat } from "../context/ChatContext"; // Adjust path as needed
 // Types pour le statut d'enregistrement
 interface RecordingStatus {
   canRecord?: boolean;
@@ -48,11 +50,13 @@ const VoiceRecorder: React.FC = () => {
 
   // Animation pour le bouton d'enregistrement
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const navigation = useNavigation();
+  const { sendMessage, startMedicalConsultation } = useChat();
 
   // Configuration de l'API Flask
   const API_CONFIG = {
-    baseUrl: "http://172.20.10.9:5002", // Remplacez par l'IP de votre serveur Flask
-    authBaseUrl: "http://172.20.10.9:5001",
+    baseUrl: "http://192.168.218.101:5002", // Remplacez par l'IP de votre serveur Flask
+    authBaseUrl: "http://192.168.218.101:5001",
     endpoint: "/classify",
     healthEndpoint: "/health",
     timeout: 60000, // 60 secondes pour le traitement audio
@@ -124,6 +128,7 @@ const VoiceRecorder: React.FC = () => {
   };
 
   // FIXED: Fonction pour envoyer l'audio à l'API Flask
+  // MODIFIED: Update the sendAudioToFlask function
   const sendAudioToFlask = async (audioFileUri: string): Promise<void> => {
     setIsUploading(true);
     setClassificationResult(null);
@@ -166,7 +171,6 @@ const VoiceRecorder: React.FC = () => {
         {
           method: "POST",
           headers: {
-            // FIXED: Removed Content-Type to let browser set boundary for multipart/form-data
             Accept: "application/json",
           },
           body: formData,
@@ -199,8 +203,39 @@ const VoiceRecorder: React.FC = () => {
       // Stocker le résultat pour l'affichage
       setClassificationResult(result);
 
-      // Afficher le résultat
-      showClassificationResult(result);
+      // NEW: Send predicted disease to chatbot and navigate
+      if (result.predicted_disease) {
+        try {
+          console.log("🩺 Maladie prédite:", result.predicted_disease);
+
+          // ✅ D'abord démarrer une nouvelle consultation SANS envoyer la maladie
+          startMedicalConsultation(); // Pas de paramètre ici !
+
+          // ✅ Attendre que la consultation soit initialisée
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+
+          // ✅ Naviguer vers le chat
+          navigation.navigate("chat" as never);
+
+          // ✅ Attendre que la navigation soit complète et envoyer UNE SEULE FOIS
+          setTimeout(async () => {
+            try {
+              console.log("📤 Envoi de la maladie prédite au chatbot...");
+              await sendMessage(result.predicted_disease);
+              console.log("✅ Maladie envoyée avec succès");
+            } catch (sendError) {
+              console.error("❌ Erreur lors de l'envoi:", sendError);
+            }
+          }, 2000); // Délai plus long pour être sûr
+
+          console.log("✅ Navigation vers le chat effectuée");
+        } catch (chatError) {
+          console.error("❌ Erreur lors de l'envoi au chatbot:", chatError);
+          showClassificationResult(result);
+        }
+      } else {
+        showClassificationResult(result);
+      }
     } catch (error) {
       console.error("❌ Erreur lors de l'envoi vers Flask:", error);
 
@@ -522,15 +557,11 @@ const VoiceRecorder: React.FC = () => {
           <Text style={styles.resultDisease}>
             {classificationResult.predicted_disease}
           </Text>
-          <Text style={styles.resultConfidence}>
-            {classificationResult.confidence_percent} • {classificationResult.confidence_level}
-          </Text>
-          <Text style={styles.resultReliability}>
-            {classificationResult.is_reliable ? "✅ Fiable" : "⚠️ Peu fiable"}
-          </Text>
           <TouchableOpacity
             style={styles.detailsButton}
-            onPress={() => classificationResult && showDetailedResult(classificationResult)}
+            onPress={() =>
+              classificationResult && showDetailedResult(classificationResult)
+            }
           >
             <Text style={styles.detailsButtonText}>Détails</Text>
           </TouchableOpacity>
@@ -622,11 +653,21 @@ const VoiceRecorder: React.FC = () => {
       <View style={styles.tipsContainer}>
         <Text style={styles.tipsTitle}>💡 Conseils d'utilisation</Text>
         <View style={styles.tipsList}>
-          <Text style={styles.tipItem}>• Trouvez un endroit calme pour l'enregistrement</Text>
-          <Text style={styles.tipItem}>• Respirez normalement pendant 10-15 secondes</Text>
-          <Text style={styles.tipItem}>• Tenez l'appareil près de votre bouche</Text>
-          <Text style={styles.tipItem}>• Écoutez votre enregistrement avant le diagnostic</Text>
-          <Text style={styles.tipItem}>• Les résultats sont indicatifs, consultez un médecin</Text>
+          <Text style={styles.tipItem}>
+            • Trouvez un endroit calme pour l'enregistrement
+          </Text>
+          <Text style={styles.tipItem}>
+            • Respirez normalement pendant 10-15 secondes
+          </Text>
+          <Text style={styles.tipItem}>
+            • Tenez l'appareil près de votre bouche
+          </Text>
+          <Text style={styles.tipItem}>
+            • Écoutez votre enregistrement avant le diagnostic
+          </Text>
+          <Text style={styles.tipItem}>
+            • Les résultats sont indicatifs, consultez un médecin
+          </Text>
         </View>
       </View>
     </ScrollView>

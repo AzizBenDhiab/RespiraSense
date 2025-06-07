@@ -207,20 +207,24 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     });
   };
 
+  // 3. ✅ Améliorer handleWebSocketMessage pour éviter les doublons
   const handleWebSocketMessage = (data: ChatMessage) => {
-    console.log("📨 Received WebSocket message:", data);
+    console.log("📨 Message WebSocket reçu:", data);
 
     switch (data.type) {
       case "bot_response":
         if (data.message && data.messageId) {
-          // ✅ Check if message already exists to prevent duplicates
+          // ✅ Vérification stricte des doublons
           const messageExists = messages.some(
-            (msg) => msg.id === data.messageId
+            (msg) =>
+              msg.id === data.messageId ||
+              (msg.isBot &&
+                msg.text === data.message &&
+                Math.abs(msg.timestamp.getTime() - Date.now()) < 5000) // 5 secondes
           );
+
           if (messageExists) {
-            console.log(
-              `⚠️ Message ${data.messageId} already exists, skipping`
-            );
+            console.log(`⚠️ Message dupliqué détecté, ignoré`);
             setIsTyping(false);
             return;
           }
@@ -254,28 +258,21 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
         break;
 
       case "error":
-        console.error("🚨 Medical bot error:", data.message);
+        console.error("🚨 Erreur bot:", data.message);
         setIsTyping(false);
         setIsAnalyzing(false);
 
-        // ✅ Use unique ID to prevent duplicate error messages
         const errorMessage: Message = {
           id: `error_${Date.now()}_${Math.random()}`,
-          text: `⚠️ Erreur médicale: ${
-            data.message || "Une erreur médicale est survenue"
-          }`,
+          text: `⚠️ Erreur: ${data.message || "Une erreur est survenue"}`,
           isBot: true,
           timestamp: new Date(),
         };
         addBotMessage(errorMessage);
         break;
 
-      case "connection":
-        console.log("🔗 Medical connection message:", data.message);
-        break;
-
       default:
-        console.log("❓ Unknown medical message type:", data.type, data);
+        console.log("❓ Type de message inconnu:", data.type);
     }
   };
 
@@ -410,15 +407,24 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     if (firstMessage.length <= 30) return `🩺 ${firstMessage}`;
     return `🩺 ${firstMessage.substring(0, 25)}...`;
   };
+  const startMedicalConsultation = (disease: string = "") => {
+    console.log("🩺 Démarrage consultation médicale, maladie:", disease);
 
-  const startMedicalConsultation = () => {
+    // ✅ Nettoyer l'état précédent
+    setIsTyping(false);
+    setIsAnalyzing(false);
+    setCurrentConsultationStage("initial");
+
     const newConsultation: MedicalConversation = {
       id: Date.now().toString(),
       title: "🩺 Nouvelle Consultation",
       messages: [
         {
           id: "welcome_medical",
-          text: "👋 Bonjour ! Je suis votre assistant médical IA.\n\n🔬 Je suis là pour vous aider à analyser vos symptômes liés à différentes maladies respiratoires.  \n D’après l’analyse de votre enregistrement vocal, il se pourrait qu’il s’agisse d’une **pneumonie**.  \n Nous allons maintenant procéder à quelques questions pour vérifier cela.",
+          text:
+            disease && disease.trim() !== ""
+              ? `👋 Bonjour ! Je suis votre assistant médical IA.\n\n🔬 D'après l'analyse de votre enregistrement vocal, il se pourrait qu'il s'agisse d'une ${disease}.\n\nNous allons maintenant procéder à quelques questions pour vérifier cela.`
+              : `👋 Bonjour ! Je suis votre assistant médical IA.\n\n🔬 Je suis là pour vous aider à analyser vos symptômes. Quelle maladie souhaitez-vous que nous analysions ensemble ?`,
           isBot: true,
           timestamp: new Date(),
         },
@@ -428,13 +434,20 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       isAnalyzing: false,
     };
 
+    // ✅ Mettre à jour l'état
     const updatedConversations = [newConsultation, ...conversations];
     setConversations(updatedConversations);
     setCurrentConversationId(newConsultation.id);
     setMessages(newConsultation.messages);
     setCurrentConsultationStage("initial");
     setIsAnalyzing(false);
+
+    // ✅ Sauvegarder
     saveConversations(updatedConversations);
+
+    // ✅ IMPORTANT: Ne pas envoyer automatiquement la maladie ici
+    // Le VoiceRecorder s'en chargera via sendMessage()
+    console.log("✅ Consultation médicale initialisée");
   };
 
   const startNewConversation = () => {
@@ -515,11 +528,35 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   };
 
   // ✅ Update your sendMessage function to use unique IDs
+  // 2. ✅ Améliorer la fonction sendMessage pour éviter les doublons
   const sendMessage = async (inputText: string) => {
     if (inputText.trim() === "") return;
 
+    console.log("📤 Tentative d'envoi:", inputText);
+
+    // ✅ Vérifier si ce message n'a pas déjà été envoyé récemment (dans les 2 dernières secondes)
+    const lastMessage = messages[messages.length - 1];
+    const now = Date.now();
+
+    if (
+      lastMessage &&
+      !lastMessage.isBot &&
+      lastMessage.text === inputText.trim() &&
+      now - lastMessage.timestamp.getTime() < 2000 // 2 secondes
+    ) {
+      console.log("⚠️ Message identique envoyé récemment, ignoré");
+      return;
+    }
+
+    // ✅ Vérifier si on n'est pas déjà en train d'envoyer quelque chose
+    if (isTyping) {
+      console.log("⚠️ Bot en train de taper, message différé");
+      setTimeout(() => sendMessage(inputText), 1000);
+      return;
+    }
+
     const userMessage: Message = {
-      id: generateUniqueMessageId(), // ✅ Use unique ID generator
+      id: generateUniqueMessageId(),
       text: inputText.trim(),
       isBot: false,
       timestamp: new Date(),
@@ -553,7 +590,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       pendingMessages.current.set(userMessage.id, userMessage);
 
       const offlineMessage: Message = {
-        id: generateUniqueMessageId(), // ✅ Use unique ID generator
+        id: generateUniqueMessageId(),
         text: `🔄 Votre message sera envoyé quand la connexion sera rétablie...`,
         isBot: true,
         timestamp: new Date(),
@@ -566,6 +603,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       reconnect();
     }
   };
+
   const reconnect = () => {
     if (wsService.current && !wsService.current.isConnected()) {
       console.log(`🔄 Attempting reconnection to: ${wsUrl}`);
