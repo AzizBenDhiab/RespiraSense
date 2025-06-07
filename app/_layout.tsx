@@ -1,24 +1,25 @@
+import { ChatProvider } from "@/context/ChatContext";
+import { useColorScheme } from "@/hooks/useColorScheme";
 import {
   DarkTheme,
   DefaultTheme,
   ThemeProvider,
 } from "@react-navigation/native";
+import axios from "axios";
 import { useFonts } from "expo-font";
-import { Stack, useSegments, useRouter } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import "react-native-reanimated";
-import { View, ActivityIndicator } from "react-native";
 import {
+  createContext,
+  ReactNode,
+  useContext,
   useEffect,
   useState,
-  createContext,
-  useContext,
-  ReactNode,
 } from "react";
-import axios from "axios";
-import { useColorScheme } from "@/hooks/useColorScheme";
+import { ActivityIndicator, View } from "react-native";
+import "react-native-reanimated";
 
-const API_URL = "https://b06d-102-158-147-215.ngrok-free.app";
+const API_URL = "http://192.168.218.101:5001";
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -226,7 +227,9 @@ function AuthProvider({ children }: { children: ReactNode }) {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <RootLayoutNav />
+      <ChatProvider>
+        <RootLayoutNav />
+      </ChatProvider>
     </AuthProvider>
   );
 }
@@ -291,6 +294,5 @@ function RootLayoutNav() {
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
-
   );
 }

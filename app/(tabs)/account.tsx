@@ -1,22 +1,22 @@
-import React, { useState, useEffect } from "react";
+import { RespiratoryCondition } from "@/types/RespiratoryCondition";
+import { Ionicons } from "@expo/vector-icons";
+import axios from "axios";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
   Alert,
   SafeAreaView,
   ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { CheckboxGroup } from "../../components/CheckboxGroup";
-import { RespiratoryCondition } from "@/types/RespiratoryCondition";
-import { useRouter } from "expo-router";
-import axios from "axios";
 import { useAuth } from "../_layout";
 
-const API_URL = "https://b06d-102-158-147-215.ngrok-free.app"; 
+const API_URL = "http://192.168.218.101:5001";
 
 const AccountScreen: React.FC = () => {
   const router = useRouter();
@@ -57,7 +57,7 @@ const AccountScreen: React.FC = () => {
         });
         console.log("Profile fetch response:", response.status, response.data);
         if (response.status === 200) {
-          const { height, weight,age, respiratory_illnesses } = response.data;
+          const { height, weight, age, respiratory_illnesses } = response.data;
           setHeight(height?.toString() || "");
           setWeight(weight?.toString() || "");
           setAge(age?.toString() || "");
@@ -116,7 +116,12 @@ const AccountScreen: React.FC = () => {
       });
       const response = await axios.post(
         `${API_URL}/profile`,
-        { height: heightNum, weight: weightNum, age: ageNum, respiratory_illnesses },
+        {
+          height: heightNum,
+          weight: weightNum,
+          age: ageNum,
+          respiratory_illnesses,
+        },
         { withCredentials: true }
       );
       console.log("Profile update response:", response.status, response.data);
@@ -144,7 +149,6 @@ const AccountScreen: React.FC = () => {
       console.log(`Sending logout request to: ${API_URL}/logout`);
       await axios.post(`${API_URL}/logout`, {}, { withCredentials: true });
       signOut();
-
     } catch (error: any) {
       console.error("Logout error:", error.message);
       Alert.alert("Error", "Failed to log out. Please try again.");
